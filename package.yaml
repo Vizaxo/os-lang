@@ -2,5 +2,17 @@ name:                os-lang
 version:             0.1.0.0
 license:             GPL-3
 
+dependencies:
+- base >= 4.7 && < 5
+- lens
+- containers
+- mtl
+
+default-extensions:
+- TemplateHaskell
+- ViewPatterns
+- FlexibleContexts
+- ConstraintKinds
+
 library:
   source-dirs: src
