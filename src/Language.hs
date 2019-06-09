@@ -11,6 +11,7 @@ data SpecialForm
   | Asm
   | Quote
   | List
+  | Eval
   deriving Show
 
 data Term
@@ -40,6 +41,7 @@ data InterpError
   = IErrBadDefMacro [Term]
   | IErrUndefinedSymbol Symbol
   | IErrMacroWrongNumArgs Macro [Term]
+  | IErrEvalWrongNumArgs [Term]
   deriving Show
 
 type MonadInterpreter m = (MonadState InterpState m, MonadError InterpError m)
@@ -52,7 +54,7 @@ eval (Cons (f:args)) = case f of
   t -> do
     t' <- eval t
     eval (Cons (t:args))
-eval x = undefined
+eval x = error $ show x
 
 applySym (toSF -> Just sf) args = applySF sf args
 applySym sym args = do
@@ -79,12 +81,15 @@ toSF "defmacro" = Just Defmacro
 toSF "asm" = Just Asm
 toSF "quote" = Just Quote
 toSF "list" = Just List
+toSF "eval" = Just Eval
 toSF _ = Nothing
 
 applySF Defmacro args = defmacro args
 applySF Asm args = mkAsm args
 applySF Quote args = pure $ Cons args
 applySF List args = Cons <$> traverse eval args
+applySF Eval [x] = eval x
+applySF Eval args = throwError (IErrEvalWrongNumArgs args)
 
 mkAsm args = pure (Cons args)
 
