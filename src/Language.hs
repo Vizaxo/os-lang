@@ -109,3 +109,17 @@ exampleAsm = Cons ["asm", "xor", "eax", "ebx"]
 multipleAsm = Cons ["list", exampleAsm, exampleAsm]
 defClearRegister = Cons ["defmacro", "clearRegister", Cons ["register"], Cons ["asm", "xor", "register", "register"]]
 clearEaxEbx = Cons ["list", Cons ["clearRegister", "eax"], Cons ["clearRegister", "ebx"]]
+defIf = Cons ["defmacro", "if", Cons ["cond", "true", "false"]
+             , Cons [ "list"
+                    , "cond"
+                    , Cons ["asm", "jnz", "ifFalse"]
+                    , "true"
+                    , Cons ["asm", "jmp", "ifEnd"]
+                    , Cons ["asm", "ifFalse:"]
+                    , "false"
+                    , Cons ["asm", "ifEnd:"]]]
+ifTest = Cons [ "if"
+              , Cons ["asm", "cmp", "eax", "ebx"]
+              , Cons ["clearRegister", "eax"]
+              , Cons ["clearRegister", "ebx"]
+              ]
