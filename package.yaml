@@ -13,6 +13,7 @@ default-extensions:
 - ViewPatterns
 - FlexibleContexts
 - ConstraintKinds
+- OverloadedStrings
 
 library:
   source-dirs: src
