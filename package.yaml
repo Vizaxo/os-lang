@@ -7,6 +7,9 @@ dependencies:
 - lens
 - containers
 - mtl
+- parsec
+- text
+- recursion-schemes
 
 default-extensions:
 - TemplateHaskell
@@ -14,6 +17,12 @@ default-extensions:
 - FlexibleContexts
 - ConstraintKinds
 - OverloadedStrings
+- KindSignatures
+- TypeFamilies
+- DeriveFunctor
+- DeriveFoldable
+- DeriveTraversable
+- LambdaCase
 
 library:
   source-dirs: src

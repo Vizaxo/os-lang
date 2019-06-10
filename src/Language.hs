@@ -47,6 +47,7 @@ data InterpError
 type MonadInterpreter m = (MonadState InterpState m, MonadError InterpError m)
 
 runInterpreter m = runExcept (runStateT m (InterpState M.empty))
+evalInterpreter m = runExcept (evalStateT m (InterpState M.empty))
 
 eval :: MonadInterpreter m => Term -> m Term
 eval (Cons (f:args)) = case f of
