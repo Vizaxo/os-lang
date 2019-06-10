@@ -13,3 +13,7 @@
 (if (asm cmp eax ebx)
     (clearReg (quote eax))
   (clearReg (quote ebx)))
+
+(gensym)
+(gensym)
+(gensym)

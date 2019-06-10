@@ -12,6 +12,7 @@ data SpecialForm
   | Quote
   | List
   | Eval
+  | Gensym
   deriving Show
 
 data Term
@@ -33,6 +34,7 @@ data Macro = Macro
 
 data InterpState = InterpState
   { _macros :: Map String Macro
+  , _genSymCounter :: Int
   }
   deriving Show
 makeLenses ''InterpState
@@ -46,8 +48,11 @@ data InterpError
 
 type MonadInterpreter m = (MonadState InterpState m, MonadError InterpError m)
 
-runInterpreter m = runExcept (runStateT m (InterpState M.empty))
-evalInterpreter m = runExcept (evalStateT m (InterpState M.empty))
+initState :: InterpState
+initState = InterpState M.empty 0
+
+runInterpreter m = runExcept (runStateT m initState)
+evalInterpreter m = runExcept (evalStateT m initState)
 
 eval :: MonadInterpreter m => Term -> m Term
 eval (Cons (f:args)) = case f of
@@ -83,7 +88,14 @@ toSF "asm" = Just Asm
 toSF "quote" = Just Quote
 toSF "list" = Just List
 toSF "eval" = Just Eval
+toSF "gensym" = Just Gensym
 toSF _ = Nothing
+
+genSym :: MonadInterpreter m => m Symbol
+genSym = do
+  st <- get
+  modify (over genSymCounter (+1))
+  pure ("gensym" <> show (st ^. genSymCounter))
 
 applySF Defmacro args = defmacro args
 applySF Asm args = mkAsm args
@@ -91,6 +103,7 @@ applySF Quote args = pure $ Cons args
 applySF List args = Cons <$> traverse eval args
 applySF Eval [x] = eval x
 applySF Eval args = throwError (IErrEvalWrongNumArgs args)
+applySF Gensym [] = Symbol <$> genSym
 
 mkAsm args = pure (Cons args)
 
