@@ -4,3 +4,6 @@ packages:
 - .
 
 extra-deps: []
+
+ghc-options:
+  "$locals": -fwarn-incomplete-patterns -fwarn-unused-imports
