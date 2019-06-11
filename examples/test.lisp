@@ -1,1 +1,1 @@
-((lambda (x) x) (lambda (y) y))
+(quote (lambda (x) x))

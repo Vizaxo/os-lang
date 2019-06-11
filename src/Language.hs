@@ -7,6 +7,7 @@ import qualified Data.Map as M
 
 data SpecialForm
   = Lambda
+  | Quote
   deriving Show
 
 newtype Symbol = Sym {unSymbol :: String}
@@ -48,6 +49,7 @@ type MonadInterpreter m = (MonadReader Env m, MonadError InterpreterError m)
 specialFormsEnv :: Env
 specialFormsEnv = Env $ M.fromList $ fmap (bimap Sym SpecialForm)
   [ ("lambda", Lambda)
+  , ("quote", Quote)
   ]
 
 evalInterpreter ma = runExcept (runReaderT ma specialFormsEnv)
@@ -79,6 +81,8 @@ callSF Lambda [Cons args, body] = do
   args' <- traverse (\t -> mbError (LambdaArgNotSymbol t) (t ^? _Symbol)) args
   pure (Function args' body)
 callSF Lambda args = throwError (LambdaIllegalArgs args)
+callSF Quote [arg] = pure arg
+callSF Quote args = pure (Cons args)
 
 callFun :: MonadInterpreter m => [Symbol] -> [Term] -> Term -> m Term
 callFun params args body = do
