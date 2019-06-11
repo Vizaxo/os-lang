@@ -2,6 +2,7 @@ module Language where
 
 import Control.Monad.Except
 import Control.Monad.Reader
+import Control.Monad.State
 import Control.Lens hiding (List)
 import qualified Data.Map as M
 
@@ -13,6 +14,7 @@ data SpecialForm
   | Car
   | Cdr
   | If
+  | Def
   deriving Show
 
 newtype Symbol = Sym {unSymbol :: String}
@@ -25,6 +27,9 @@ data Term
   | Function Env [Symbol] Term
   | Macro [Symbol] Term
   deriving Show
+
+nil :: Term
+nil = List []
 
 newtype Env = Env {_unEnv :: M.Map Symbol Term}
   deriving Show
@@ -52,7 +57,19 @@ data InterpreterError
   | SFIllegalArgs SpecialForm [Term]
   deriving Show
 
-type MonadInterpreter m = (MonadReader Env m, MonadError InterpreterError m)
+data InterpreterState = InterpreterState
+  { _globalDefs :: M.Map Symbol Term
+  }
+makeLenses ''InterpreterState
+
+emptyState :: InterpreterState
+emptyState = InterpreterState M.empty
+
+type MonadInterpreter m =
+  ( MonadReader Env m
+  , MonadError InterpreterError m
+  , MonadState InterpreterState m
+  )
 
 specialFormsEnv :: Env
 specialFormsEnv = Env $ M.fromList $ fmap (bimap Sym SpecialForm)
@@ -63,9 +80,12 @@ specialFormsEnv = Env $ M.fromList $ fmap (bimap Sym SpecialForm)
   , ("car", Car)
   , ("cdr", Cdr)
   , ("if", If)
+  , ("def", Def)
   ]
 
-evalInterpreter ma = runExcept (runReaderT ma specialFormsEnv)
+evalInterpreter :: ReaderT Env (ExceptT InterpreterError (State InterpreterState)) a
+  -> Either InterpreterError a
+evalInterpreter ma = evalState (runExceptT (runReaderT ma specialFormsEnv)) emptyState
 
 mbError :: MonadError err m => err -> Maybe a -> m a
 mbError err Nothing = throwError err
@@ -75,7 +95,11 @@ lookupEnv :: MonadInterpreter m => Symbol -> m Term
 lookupEnv s = do
   env <- ask
   case M.lookup s (env ^. unEnv) of
-    Nothing -> throwError (SymbolUndefined s)
+    Nothing -> do
+      globals <- view globalDefs <$> get
+      case M.lookup s globals of
+        Nothing -> throwError (SymbolUndefined s)
+        Just t -> pure t
     Just t -> pure t
 
 eval :: MonadInterpreter m => Term -> m Term
@@ -117,6 +141,10 @@ callSF If [c, t, f] = do
   eval c >>= \case
     List [] -> eval f --nil is false
     _ -> eval t
+callSF Def [Symbol name, val] = do
+  val' <- eval val
+  modify (over globalDefs (M.insert name val'))
+  pure nil
 callSF sf args = throwError (SFIllegalArgs sf args)
 
 callFun :: MonadInterpreter m => Env -> [Symbol] -> [Term] -> Term -> m Term
