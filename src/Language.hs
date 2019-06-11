@@ -7,6 +7,7 @@ import qualified Data.Map as M
 
 data SpecialForm
   = Lambda
+  | Mac
   | Quote
   deriving Show
 
@@ -18,6 +19,7 @@ data Term
   | Symbol Symbol
   | SpecialForm SpecialForm
   | Function [Symbol] Term
+  | Macro [Symbol] Term
   deriving Show
 makePrisms ''Term
 
@@ -41,7 +43,9 @@ data InterpreterError
   | IllegalCall Term [Term]
   | Can'tEval Term
   | LambdaArgNotSymbol Term
+  | MacroArgNotSymbol Term
   | LambdaIllegalArgs [Term]
+  | MacroIllegalArgs [Term]
   deriving Show
 
 type MonadInterpreter m = (MonadReader Env m, MonadError InterpreterError m)
@@ -49,6 +53,7 @@ type MonadInterpreter m = (MonadReader Env m, MonadError InterpreterError m)
 specialFormsEnv :: Env
 specialFormsEnv = Env $ M.fromList $ fmap (bimap Sym SpecialForm)
   [ ("lambda", Lambda)
+  , ("mac", Mac)
   , ("quote", Quote)
   ]
 
@@ -73,6 +78,7 @@ eval e = throwError (Can'tEval e)
 call :: MonadInterpreter m => Term -> [Term] -> m Term
 call (SpecialForm sf) args = callSF sf args
 call (Function params body) args = callFun params args body
+call (Macro params body) args = eval =<< macroExpand params args body
 call op args = throwError (IllegalCall op args)
 
 callSF :: MonadInterpreter m => SpecialForm -> [Term] -> m Term
@@ -81,6 +87,10 @@ callSF Lambda [Cons args, body] = do
   args' <- traverse (\t -> mbError (LambdaArgNotSymbol t) (t ^? _Symbol)) args
   pure (Function args' body)
 callSF Lambda args = throwError (LambdaIllegalArgs args)
+callSF Mac [Cons args, body] = do
+  args' <- traverse (\t -> mbError (MacroArgNotSymbol t) (t ^? _Symbol)) args
+  pure (Macro args' body)
+callSF Mac args = throwError (MacroIllegalArgs args)
 callSF Quote [arg] = pure arg
 callSF Quote args = pure (Cons args)
 
@@ -88,3 +98,7 @@ callFun :: MonadInterpreter m => [Symbol] -> [Term] -> Term -> m Term
 callFun params args body = do
   args' <- traverse eval args
   local (insertsEnv params args') (eval body)
+
+macroExpand :: MonadInterpreter m => [Symbol] -> [Term] -> Term -> m Term
+macroExpand params args body =
+  local (insertsEnv params args) (eval body)
