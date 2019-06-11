@@ -14,6 +14,10 @@ type TokenTree = SexpTree Token
 sexp :: TokParser [TokenTree] -> TokParser TokenTree
 sexp = (SexpTree <$>) . between (expect OpenParen) (expect CloseParen)
 
+quote :: TokParser TokenTree
+quote = expect Quote *> (mkQuote <$> singleSexpTree) where
+  mkQuote t = SexpTree [Node Quote, t]
+
 node :: TokParser TokenTree
 node = Node <$> notParen
 
@@ -21,5 +25,8 @@ notParen :: TokParser Token
 notParen = tokenPrim show (\p _ _ -> p)
   (\t -> if (notElem t [OpenParen, CloseParen]) then Just t else Nothing)
 
+singleSexpTree :: TokParser TokenTree
+singleSexpTree = quote <|> sexp sexpTree <|> node
+
 sexpTree :: TokParser [TokenTree]
-sexpTree = many (sexp sexpTree <|> node)
+sexpTree = many singleSexpTree

@@ -7,6 +7,7 @@ data Token
   = Identifier String
   | OpenParen
   | CloseParen
+  | Quote
   deriving (Eq, Show)
 
 type TokParser = Parsec [Token] ()
@@ -18,6 +19,7 @@ specialChars :: [(String, Token)]
 specialChars =
   [ ("(", OpenParen)
   , (")", CloseParen)
+  , ("'", Quote)
   ]
 
 specialChar :: Parser Token

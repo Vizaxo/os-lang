@@ -26,8 +26,14 @@ symbol :: TokenTree -> Maybe Term
 symbol (Node (Identifier s)) = Just (Symbol (Sym s))
 symbol _ = Nothing
 
+parseQuote :: TokenTree -> Maybe Term
+parseQuote (SexpTree [Node L.Quote, t]) = do
+  t' <- term t
+  pure (Cons [Symbol (Sym "quote"), t'])
+parseQuote _ = Nothing
+
 term :: TokenTree -> Maybe Term
-term t = symbol t <|> cons t
+term t = parseQuote t <|> symbol t <|> cons t
 
 parseTerms :: Text -> Either LexerParserError [Term]
 parseTerms s = do
