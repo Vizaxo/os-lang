@@ -1,1 +1,1 @@
-'(lambda (x) x)
+(cons 'y '(x))

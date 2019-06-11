@@ -9,6 +9,7 @@ data SpecialForm
   = Lambda
   | Mac
   | Quote
+  | Cons
   deriving Show
 
 newtype Symbol = Sym {unSymbol :: String}
@@ -44,8 +45,7 @@ data InterpreterError
   | Can'tEval Term
   | LambdaArgNotSymbol Term
   | MacroArgNotSymbol Term
-  | LambdaIllegalArgs [Term]
-  | MacroIllegalArgs [Term]
+  | SFIllegalArgs SpecialForm [Term]
   deriving Show
 
 type MonadInterpreter m = (MonadReader Env m, MonadError InterpreterError m)
@@ -55,6 +55,7 @@ specialFormsEnv = Env $ M.fromList $ fmap (bimap Sym SpecialForm)
   [ ("lambda", Lambda)
   , ("mac", Mac)
   , ("quote", Quote)
+  , ("cons", Cons)
   ]
 
 evalInterpreter ma = runExcept (runReaderT ma specialFormsEnv)
@@ -86,13 +87,17 @@ callSF Lambda [List args, body] = do
   --args' <- mbError LambdaArgNotSymbol (args ^? (mapped._Symbol))
   args' <- traverse (\t -> mbError (LambdaArgNotSymbol t) (t ^? _Symbol)) args
   pure (Function args' body)
-callSF Lambda args = throwError (LambdaIllegalArgs args)
 callSF Mac [List args, body] = do
   args' <- traverse (\t -> mbError (MacroArgNotSymbol t) (t ^? _Symbol)) args
   pure (Macro args' body)
-callSF Mac args = throwError (MacroIllegalArgs args)
 callSF Quote [arg] = pure arg
 callSF Quote args = pure (List args)
+callSF Cons [car, cdr] = do
+  car' <- eval car
+  eval cdr >>= \case
+    List cdr' -> pure (List (car':cdr'))
+    _ -> throwError (SFIllegalArgs Cons [car, cdr])
+callSF sf args = throwError (SFIllegalArgs sf args)
 
 callFun :: MonadInterpreter m => [Symbol] -> [Term] -> Term -> m Term
 callFun params args body = do
