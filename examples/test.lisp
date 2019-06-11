@@ -1,1 +1,1 @@
-(cons 'y '(x))
+((mac (x) (cons 'quote (cons x '()))) y)
