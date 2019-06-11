@@ -30,7 +30,7 @@ data Term
   | Symbol Symbol
   | SpecialForm SpecialForm
   | Function Env Funparams Term
-  | Macro [Symbol] Term
+  | Macro Funparams Term
   deriving Show
 
 nil :: Term
@@ -60,6 +60,7 @@ data InterpreterError
   | LambdaArgNotSymbol Term
   | LambdaArgError Term
   | MacroArgNotSymbol Term
+  | MacroArgError Term
   | SFIllegalArgs SpecialForm [Term]
   deriving Show
 
@@ -129,9 +130,13 @@ callSF Lambda [params, body] = do
     _ -> throwError (LambdaArgError params)
   lexicalEnv <- ask
   pure (Function lexicalEnv funparams body)
-callSF Mac [List args, body] = do
-  args' <- traverse (\t -> mbError (MacroArgNotSymbol t) (t ^? _Symbol)) args
-  pure (Macro args' body)
+callSF Mac [params, body] = do
+  funparams <- case params of
+    List listParams -> ParamsList <$>
+      traverse (\t -> mbError (MacroArgNotSymbol t) (t ^? _Symbol)) listParams
+    Symbol varargs -> pure (Varargs varargs)
+    _ -> throwError (MacroArgError params)
+  pure (Macro funparams body)
 callSF Quote [arg] = pure arg
 callSF Quote args = pure (List args)
 callSF Cons [car, cdr] = do
@@ -166,6 +171,8 @@ callFun lexicalEnv (Varargs params) args body = do
   local (const (insertEnv params (List args') lexicalEnv)) (eval body)
 
 
-macroExpand :: MonadInterpreter m => [Symbol] -> [Term] -> Term -> m Term
-macroExpand params args body =
+macroExpand :: MonadInterpreter m => Funparams -> [Term] -> Term -> m Term
+macroExpand (ParamsList params) args body =
   local (insertsEnv params args) (eval body)
+macroExpand (Varargs params) args body =
+  local (insertEnv params (List args)) (eval body)

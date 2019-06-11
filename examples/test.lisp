@@ -18,3 +18,9 @@
 (def varadic (lambda args (car (cdr args))))
 
 (varadic 'a 'b 'c 'd)
+
+(def varmacro
+     (mac args
+          (cons 'quote (cons (car (cdr args)) '()))))
+
+(varmacro 'a b 'c 'd)
