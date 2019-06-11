@@ -8,7 +8,7 @@ import Language
 
 data ReplError
   = ParseError LexerParserError
-  | InterpError InterpError
+  | InterpError InterpreterError
   | FileError
   deriving Show
 

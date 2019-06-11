@@ -23,7 +23,7 @@ cons (SexpTree xs) = Cons <$> traverse term xs
 cons _ = Nothing
 
 symbol :: TokenTree -> Maybe Term
-symbol (Node (Identifier s)) = Just (Symbol s)
+symbol (Node (Identifier s)) = Just (Symbol (Sym s))
 symbol _ = Nothing
 
 term :: TokenTree -> Maybe Term
