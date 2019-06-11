@@ -13,7 +13,7 @@ data Token
 type TokParser = Parsec [Token] ()
 
 identifier :: Parser Token
-identifier = Identifier <$> ((:) <$> letter <*> many alphaNum)
+identifier = Identifier <$> (many1 (alphaNum <|> oneOf "-_"))
 
 specialChars :: [(String, Token)]
 specialChars =
