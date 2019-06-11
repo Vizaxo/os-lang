@@ -1,1 +1,5 @@
-((mac (x) (cons 'quote (cons x '()))) y)
+((lambda (let)
+   (let id (lambda (x) x)
+        (id 'y)))
+ (mac (name val body)
+      (cons (cons 'lambda (cons (cons name '()) (cons body '()))) (cons val '()))))
