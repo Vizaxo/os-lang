@@ -15,6 +15,8 @@ data SpecialForm
   | Cdr
   | If
   | Def
+  | Eval
+  | Apply
   deriving Show
 
 newtype Symbol = Sym {unSymbol :: String}
@@ -88,6 +90,8 @@ specialFormsEnv = Env $ M.fromList $ fmap (bimap Sym SpecialForm)
   , ("cdr", Cdr)
   , ("if", If)
   , ("def", Def)
+  , ("eval", Eval)
+  , ("apply", Apply)
   ]
 
 evalInterpreter :: ReaderT Env (ExceptT InterpreterError (State InterpreterState)) a
@@ -160,15 +164,27 @@ callSF Def [Symbol name, val] = do
   val' <- eval val
   modify (over globalDefs (M.insert name val'))
   pure nil
+callSF Eval [t] = do
+  eval =<< eval t
+callSF Apply [f, args] = do
+  eval args >>= \case
+    List args' -> eval f >>= \case
+      Function lexicalEnv params body
+        -> callFunNoEvalArgs lexicalEnv params args' body
+      _ -> throwError (SFIllegalArgs Apply [f, args])
+    _ -> throwError (SFIllegalArgs Apply [f, args])
 callSF sf args = throwError (SFIllegalArgs sf args)
 
 callFun :: MonadInterpreter m => Env -> Funparams -> [Term] -> Term -> m Term
-callFun lexicalEnv (ParamsList params) args body = do
+callFun lexicalEnv params args body = do
   args' <- traverse eval args
-  local (const (insertsEnv params args' lexicalEnv)) (eval body)
-callFun lexicalEnv (Varargs params) args body = do
-  args' <- traverse eval args
-  local (const (insertEnv params (List args') lexicalEnv)) (eval body)
+  callFunNoEvalArgs lexicalEnv params args' body
+
+callFunNoEvalArgs :: MonadInterpreter m => Env -> Funparams -> [Term] -> Term -> m Term
+callFunNoEvalArgs lexicalEnv (ParamsList params) args body = do
+  local (const (insertsEnv params args lexicalEnv)) (eval body)
+callFunNoEvalArgs lexicalEnv (Varargs params) args body = do
+  local (const (insertEnv params (List args) lexicalEnv)) (eval body)
 
 
 macroExpand :: MonadInterpreter m => Funparams -> [Term] -> Term -> m Term
