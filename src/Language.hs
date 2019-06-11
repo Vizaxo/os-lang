@@ -3,7 +3,7 @@ module Language where
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Lens
-import Data.Map as M
+import qualified Data.Map as M
 
 data SpecialForm
   = Lambda
@@ -20,11 +20,20 @@ data Term
   deriving Show
 makePrisms ''Term
 
-newtype Env = Env {unEnv :: Map Symbol Term}
+newtype Env = Env {_unEnv :: M.Map Symbol Term}
   deriving Show
+makeLenses ''Env
 
 emptyEnv :: Env
 emptyEnv = Env (M.empty)
+
+insertEnv :: Symbol -> Term -> Env -> Env
+insertEnv s t = over unEnv (M.insert s t)
+
+insertsEnv :: [Symbol] -> [Term] -> Env -> Env
+insertsEnv [] _ e = e
+insertsEnv _ [] e = e
+insertsEnv (s:ss) (t:ts) e = insertEnv s t (insertsEnv ss ts e)
 
 data InterpreterError
   = SymbolUndefined Symbol
@@ -50,7 +59,7 @@ mbError err (Just x) = pure x
 lookupEnv :: MonadInterpreter m => Symbol -> m Term
 lookupEnv s = do
   env <- ask
-  case M.lookup s (unEnv env) of
+  case M.lookup s (env ^. unEnv) of
     Nothing -> throwError (SymbolUndefined s)
     Just t -> pure t
 
@@ -61,6 +70,7 @@ eval e = throwError (Can'tEval e)
 
 call :: MonadInterpreter m => Term -> [Term] -> m Term
 call (SpecialForm sf) args = callSF sf args
+call (Function params body) args = callFun params args body
 call op args = throwError (IllegalCall op args)
 
 callSF :: MonadInterpreter m => SpecialForm -> [Term] -> m Term
@@ -69,3 +79,8 @@ callSF Lambda [Cons args, body] = do
   args' <- traverse (\t -> mbError (LambdaArgNotSymbol t) (t ^? _Symbol)) args
   pure (Function args' body)
 callSF Lambda args = throwError (LambdaIllegalArgs args)
+
+callFun :: MonadInterpreter m => [Symbol] -> [Term] -> Term -> m Term
+callFun params args body = do
+  args' <- traverse eval args
+  local (insertsEnv params args') (eval body)
