@@ -12,6 +12,7 @@ data SpecialForm
   | Cons
   | Car
   | Cdr
+  | If
   deriving Show
 
 newtype Symbol = Sym {unSymbol :: String}
@@ -60,6 +61,7 @@ specialFormsEnv = Env $ M.fromList $ fmap (bimap Sym SpecialForm)
   , ("cons", Cons)
   , ("car", Car)
   , ("cdr", Cdr)
+  , ("if", If)
   ]
 
 evalInterpreter ma = runExcept (runReaderT ma specialFormsEnv)
@@ -109,6 +111,10 @@ callSF Cdr [arg] = do
   eval arg >>= \case
     List (x:xs) -> pure (List xs)
     _ -> throwError (SFIllegalArgs Cdr [arg])
+callSF If [c, t, f] = do
+  eval c >>= \case
+    List [] -> eval f --nil is false
+    _ -> eval t
 callSF sf args = throwError (SFIllegalArgs sf args)
 
 callFun :: MonadInterpreter m => [Symbol] -> [Term] -> Term -> m Term

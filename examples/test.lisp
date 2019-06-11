@@ -1,5 +1,5 @@
 ((lambda (let)
    (let id (lambda (x) x)
-        (car (cdr '(x y z)))))
+        (if '() x 'y)))
  (mac (name val body)
       (cons (cons 'lambda (cons (cons name '()) (cons body '()))) (cons val '()))))
