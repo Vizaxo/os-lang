@@ -2,7 +2,7 @@ module Language where
 
 import Control.Monad.Except
 import Control.Monad.Reader
-import Control.Lens
+import Control.Lens hiding (List)
 import qualified Data.Map as M
 
 data SpecialForm
@@ -15,7 +15,7 @@ newtype Symbol = Sym {unSymbol :: String}
   deriving (Eq, Ord, Show)
 
 data Term
-  = Cons [Term]
+  = List [Term]
   | Symbol Symbol
   | SpecialForm SpecialForm
   | Function [Symbol] Term
@@ -71,7 +71,7 @@ lookupEnv s = do
     Just t -> pure t
 
 eval :: MonadInterpreter m => Term -> m Term
-eval (Cons (x:xs)) = flip call xs =<< eval x
+eval (List (x:xs)) = flip call xs =<< eval x
 eval (Symbol s) = lookupEnv s
 eval e = throwError (Can'tEval e)
 
@@ -82,17 +82,17 @@ call (Macro params body) args = eval =<< macroExpand params args body
 call op args = throwError (IllegalCall op args)
 
 callSF :: MonadInterpreter m => SpecialForm -> [Term] -> m Term
-callSF Lambda [Cons args, body] = do
+callSF Lambda [List args, body] = do
   --args' <- mbError LambdaArgNotSymbol (args ^? (mapped._Symbol))
   args' <- traverse (\t -> mbError (LambdaArgNotSymbol t) (t ^? _Symbol)) args
   pure (Function args' body)
 callSF Lambda args = throwError (LambdaIllegalArgs args)
-callSF Mac [Cons args, body] = do
+callSF Mac [List args, body] = do
   args' <- traverse (\t -> mbError (MacroArgNotSymbol t) (t ^? _Symbol)) args
   pure (Macro args' body)
 callSF Mac args = throwError (MacroIllegalArgs args)
 callSF Quote [arg] = pure arg
-callSF Quote args = pure (Cons args)
+callSF Quote args = pure (List args)
 
 callFun :: MonadInterpreter m => [Symbol] -> [Term] -> Term -> m Term
 callFun params args body = do

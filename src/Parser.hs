@@ -19,7 +19,7 @@ data ParseError
   = CantParse TokenTree
 
 cons :: TokenTree -> Maybe Term
-cons (SexpTree xs) = Cons <$> traverse term xs
+cons (SexpTree xs) = List <$> traverse term xs
 cons _ = Nothing
 
 symbol :: TokenTree -> Maybe Term
@@ -29,7 +29,7 @@ symbol _ = Nothing
 parseQuote :: TokenTree -> Maybe Term
 parseQuote (SexpTree [Node L.Quote, t]) = do
   t' <- term t
-  pure (Cons [Symbol (Sym "quote"), t'])
+  pure (List [Symbol (Sym "quote"), t'])
 parseQuote _ = Nothing
 
 term :: TokenTree -> Maybe Term
