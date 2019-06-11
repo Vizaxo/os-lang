@@ -22,10 +22,9 @@ data Term
   = List [Term]
   | Symbol Symbol
   | SpecialForm SpecialForm
-  | Function [Symbol] Term
+  | Function Env [Symbol] Term
   | Macro [Symbol] Term
   deriving Show
-makePrisms ''Term
 
 newtype Env = Env {_unEnv :: M.Map Symbol Term}
   deriving Show
@@ -41,6 +40,8 @@ insertsEnv :: [Symbol] -> [Term] -> Env -> Env
 insertsEnv [] _ e = e
 insertsEnv _ [] e = e
 insertsEnv (s:ss) (t:ts) e = insertEnv s t (insertsEnv ss ts e)
+
+makePrisms ''Term
 
 data InterpreterError
   = SymbolUndefined Symbol
@@ -84,7 +85,7 @@ eval e = throwError (Can'tEval e)
 
 call :: MonadInterpreter m => Term -> [Term] -> m Term
 call (SpecialForm sf) args = callSF sf args
-call (Function params body) args = callFun params args body
+call (Function lexicalEnv params body) args = callFun lexicalEnv params args body
 call (Macro params body) args = eval =<< macroExpand params args body
 call op args = throwError (IllegalCall op args)
 
@@ -92,7 +93,8 @@ callSF :: MonadInterpreter m => SpecialForm -> [Term] -> m Term
 callSF Lambda [List args, body] = do
   --args' <- mbError LambdaArgNotSymbol (args ^? (mapped._Symbol))
   args' <- traverse (\t -> mbError (LambdaArgNotSymbol t) (t ^? _Symbol)) args
-  pure (Function args' body)
+  lexicalEnv <- ask
+  pure (Function lexicalEnv args' body)
 callSF Mac [List args, body] = do
   args' <- traverse (\t -> mbError (MacroArgNotSymbol t) (t ^? _Symbol)) args
   pure (Macro args' body)
@@ -117,10 +119,13 @@ callSF If [c, t, f] = do
     _ -> eval t
 callSF sf args = throwError (SFIllegalArgs sf args)
 
-callFun :: MonadInterpreter m => [Symbol] -> [Term] -> Term -> m Term
-callFun params args body = do
+callFun :: MonadInterpreter m => Env -> [Symbol] -> [Term] -> Term -> m Term
+callFun lexicalEnv params args body = do
+  --traceShowM "-------------"
+  --traceShowM (params, args, body, env)
+  --traceShowM (params, args, body)
   args' <- traverse eval args
-  local (insertsEnv params args') (eval body)
+  local (const (insertsEnv params args' lexicalEnv)) (eval body)
 
 macroExpand :: MonadInterpreter m => [Symbol] -> [Term] -> Term -> m Term
 macroExpand params args body =
