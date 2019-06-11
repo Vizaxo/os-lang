@@ -20,11 +20,16 @@ data SpecialForm
 newtype Symbol = Sym {unSymbol :: String}
   deriving (Eq, Ord, Show)
 
+data Funparams
+  = ParamsList [Symbol]
+  | Varargs Symbol
+  deriving Show
+
 data Term
   = List [Term]
   | Symbol Symbol
   | SpecialForm SpecialForm
-  | Function Env [Symbol] Term
+  | Function Env Funparams Term
   | Macro [Symbol] Term
   deriving Show
 
@@ -53,6 +58,7 @@ data InterpreterError
   | IllegalCall Term [Term]
   | Can'tEval Term
   | LambdaArgNotSymbol Term
+  | LambdaArgError Term
   | MacroArgNotSymbol Term
   | SFIllegalArgs SpecialForm [Term]
   deriving Show
@@ -114,11 +120,15 @@ call (Macro params body) args = eval =<< macroExpand params args body
 call op args = throwError (IllegalCall op args)
 
 callSF :: MonadInterpreter m => SpecialForm -> [Term] -> m Term
-callSF Lambda [List args, body] = do
-  --args' <- mbError LambdaArgNotSymbol (args ^? (mapped._Symbol))
-  args' <- traverse (\t -> mbError (LambdaArgNotSymbol t) (t ^? _Symbol)) args
+callSF Lambda [params, body] = do
+  --params' <- mbError LambdaArgNotSymbol (params ^? (mapped._Symbol))
+  funparams <- case params of
+    List listParams -> ParamsList <$>
+      traverse (\t -> mbError (LambdaArgNotSymbol t) (t ^? _Symbol)) listParams
+    Symbol varargs -> pure (Varargs varargs)
+    _ -> throwError (LambdaArgError params)
   lexicalEnv <- ask
-  pure (Function lexicalEnv args' body)
+  pure (Function lexicalEnv funparams body)
 callSF Mac [List args, body] = do
   args' <- traverse (\t -> mbError (MacroArgNotSymbol t) (t ^? _Symbol)) args
   pure (Macro args' body)
@@ -147,13 +157,14 @@ callSF Def [Symbol name, val] = do
   pure nil
 callSF sf args = throwError (SFIllegalArgs sf args)
 
-callFun :: MonadInterpreter m => Env -> [Symbol] -> [Term] -> Term -> m Term
-callFun lexicalEnv params args body = do
-  --traceShowM "-------------"
-  --traceShowM (params, args, body, env)
-  --traceShowM (params, args, body)
+callFun :: MonadInterpreter m => Env -> Funparams -> [Term] -> Term -> m Term
+callFun lexicalEnv (ParamsList params) args body = do
   args' <- traverse eval args
   local (const (insertsEnv params args' lexicalEnv)) (eval body)
+callFun lexicalEnv (Varargs params) args body = do
+  args' <- traverse eval args
+  local (const (insertEnv params (List args') lexicalEnv)) (eval body)
+
 
 macroExpand :: MonadInterpreter m => [Symbol] -> [Term] -> Term -> m Term
 macroExpand params args body =

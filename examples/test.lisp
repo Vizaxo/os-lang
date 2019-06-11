@@ -14,3 +14,7 @@
             (last (cdr x))
           x))))
  '(fi fi fo fum))
+
+(def varadic (lambda args (car (cdr args))))
+
+(varadic 'a 'b 'c 'd)
