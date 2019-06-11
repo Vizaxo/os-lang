@@ -38,5 +38,5 @@ term t = parseQuote t <|> symbol t <|> cons t
 parseTerms :: Text -> Either LexerParserError [Term]
 parseTerms s = do
   lexed <- first ErrLex (P.parse lexer "" s)
-  sexp <- first ErrSexp (P.parse sexpTree "" lexed)
+  sexp <- first ErrSexp (P.parse (sexpTree <* P.eof) "" lexed)
   maybe (Left ErrParse) Right (traverse term sexp)
