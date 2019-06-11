@@ -8,4 +8,9 @@
           (lambda (g)
             (f (lambda (x) ((g g) x)))))))
 
+(def list (lambda args args))
+
+(def defmacro
+     (mac (name args body)
+          (list 'def name (list 'mac args body))))
 
