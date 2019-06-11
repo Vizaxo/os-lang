@@ -14,3 +14,7 @@
      (mac (name args body)
           (list 'def name (list 'mac args body))))
 
+(def defun
+     (mac (name args body)
+          (list 'def name (list 'lambda args body))))
+
