@@ -32,8 +32,20 @@ parseQuote (SexpTree [Node L.Quote, t]) = do
   pure (List [Symbol (Sym "quote"), t'])
 parseQuote _ = Nothing
 
+parseQuasiquote :: TokenTree -> Maybe Term
+parseQuasiquote (SexpTree [Node L.Quasiquote, t]) = do
+  t' <- term t
+  pure (List [Symbol (Sym "quasiquote"), t'])
+parseQuasiquote _ = Nothing
+
+parseUnquote :: TokenTree -> Maybe Term
+parseUnquote (SexpTree [Node L.Unquote, t]) = do
+  t' <- term t
+  pure (List [Symbol (Sym "unquote"), t'])
+parseUnquote _ = Nothing
+
 term :: TokenTree -> Maybe Term
-term t = parseQuote t <|> symbol t <|> cons t
+term t = parseQuote t <|> parseQuasiquote t <|> parseUnquote t <|> symbol t <|> cons t
 
 parseTerms :: Text -> Either LexerParserError [Term]
 parseTerms s = do

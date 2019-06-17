@@ -10,6 +10,8 @@ data SpecialForm
   = Lambda
   | Mac
   | Quote
+  | Quasiquote
+  | Unquote
   | Cons
   | Car
   | Cdr
@@ -85,6 +87,8 @@ specialFormsEnv = Env $ M.fromList $ fmap (bimap Sym SpecialForm)
   [ ("lambda", Lambda)
   , ("mac", Mac)
   , ("quote", Quote)
+  , ("quasiquote", Quasiquote)
+  , ("unquote", Unquote)
   , ("cons", Cons)
   , ("car", Car)
   , ("cdr", Cdr)
@@ -143,6 +147,7 @@ callSF Mac [params, body] = do
   pure (Macro funparams body)
 callSF Quote [arg] = pure arg
 callSF Quote args = pure (List args)
+callSF Quasiquote [arg] = quasiquote arg
 callSF Cons [car, cdr] = do
   car' <- eval car
   eval cdr >>= \case
@@ -174,6 +179,12 @@ callSF Apply [f, args] = do
       _ -> throwError (SFIllegalArgs Apply [f, args])
     _ -> throwError (SFIllegalArgs Apply [f, args])
 callSF sf args = throwError (SFIllegalArgs sf args)
+
+quasiquote :: forall m. MonadInterpreter m => Term -> m Term
+quasiquote (List [Symbol (Sym "unquote"), arg]) = eval arg
+quasiquote (List (Symbol (Sym "unquote"):args)) = throwError (SFIllegalArgs Unquote args)
+quasiquote (List args) = List <$> mapM quasiquote args
+quasiquote x = pure x
 
 callFun :: MonadInterpreter m => Env -> Funparams -> [Term] -> Term -> m Term
 callFun lexicalEnv params args body = do

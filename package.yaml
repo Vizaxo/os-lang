@@ -23,6 +23,7 @@ default-extensions:
 - DeriveFoldable
 - DeriveTraversable
 - LambdaCase
+- ScopedTypeVariables
 
 library:
   source-dirs: src

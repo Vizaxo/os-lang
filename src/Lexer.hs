@@ -8,6 +8,8 @@ data Token
   | OpenParen
   | CloseParen
   | Quote
+  | Quasiquote
+  | Unquote
   deriving (Eq, Show)
 
 type TokParser = Parsec [Token] ()
@@ -20,6 +22,8 @@ specialChars =
   [ ("(", OpenParen)
   , (")", CloseParen)
   , ("'", Quote)
+  , ("`", Quasiquote)
+  , (",", Unquote)
   ]
 
 specialChar :: Parser Token

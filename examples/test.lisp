@@ -1,8 +1,6 @@
-(def list (lambda args args))
-
 (def defmacro
      (mac (name args body)
-          (list 'def name (list 'mac args body))))
+          `(def ,name (mac ,args ,body))))
 
 (def Z (lambda (f)
          ((lambda (g)
@@ -12,9 +10,12 @@
 
 (def defun
      (mac (name args body)
-          (list 'def name
-                (list 'Z (list 'lambda (list name)
-                               (list 'lambda args body))))))
+          `(def ,name
+                (Z (lambda (name)
+                     (lambda ,args ,body))))))
+
+(defun list args
+  args)
 
 (defun match-list (xs nilcase conscase)
   (if xs

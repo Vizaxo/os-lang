@@ -18,6 +18,14 @@ quote :: TokParser TokenTree
 quote = expect Quote *> (mkQuote <$> singleSexpTree) where
   mkQuote t = SexpTree [Node Quote, t]
 
+quasiquote :: TokParser TokenTree
+quasiquote = expect Quasiquote *> (mkQuasiquote <$> singleSexpTree) where
+  mkQuasiquote t = SexpTree [Node Quasiquote, t]
+
+unquote :: TokParser TokenTree
+unquote = expect Unquote *> (mkUnquote <$> singleSexpTree) where
+  mkUnquote t = SexpTree [Node Unquote, t]
+
 node :: TokParser TokenTree
 node = Node <$> notParen
 
@@ -26,7 +34,7 @@ notParen = tokenPrim show (\p _ _ -> p)
   (\t -> if (notElem t [OpenParen, CloseParen]) then Just t else Nothing)
 
 singleSexpTree :: TokParser TokenTree
-singleSexpTree = quote <|> sexp sexpTree <|> node
+singleSexpTree = quote <|> quasiquote <|> unquote <|> sexp sexpTree <|> node
 
 sexpTree :: TokParser [TokenTree]
 sexpTree = many singleSexpTree
