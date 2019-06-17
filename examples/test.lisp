@@ -2,12 +2,6 @@
      (mac (name val body)
           (cons (cons 'lambda (cons (cons name '()) (cons body '()))) (cons val '()))))
 
-(def Z (lambda (f)
-         ((lambda (g)
-            (f (g g)))
-          (lambda (g)
-            (f (lambda (x) ((g g) x)))))))
-
 (def list (lambda args args))
 
 (def defmacro
@@ -17,4 +11,20 @@
 (def defun
      (mac (name args body)
           (list 'def name (list 'lambda args body))))
+
+(def Z (lambda (f)
+         ((lambda (g)
+            (f (g g)))
+          (lambda (g)
+            (f (lambda x (apply (g g) x)))))))
+
+(defun match-list (xs nilcase conscase)
+  (if xs
+      (conscase (car xs) (cdr xs))
+    nilcase))
+
+(def map
+     (Z (lambda (map)
+          (lambda (f xs)
+            (match-list xs '() (lambda (hd tl) (cons (f hd) (map f tl))))))))
 
