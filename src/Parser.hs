@@ -44,8 +44,13 @@ parseUnquote (SexpTree [Node L.Unquote, t]) = do
   pure (List [Symbol (Sym "unquote"), t'])
 parseUnquote _ = Nothing
 
+string :: TokenTree -> Maybe Term
+string (Node (L.String s)) = Just (Language.String s)
+string _ = Nothing
+
 term :: TokenTree -> Maybe Term
-term t = parseQuote t <|> parseQuasiquote t <|> parseUnquote t <|> symbol t <|> cons t
+term t = parseQuote t <|> parseQuasiquote t <|> parseUnquote t
+  <|> string t <|> symbol t <|> cons t
 
 parseTerms :: Text -> Either LexerParserError [Term]
 parseTerms s = do

@@ -10,6 +10,7 @@ data Token
   | Quote
   | Quasiquote
   | Unquote
+  | String String
   deriving (Eq, Show)
 
 type TokParser = Parsec [Token] ()
@@ -32,8 +33,11 @@ specialChar = choice (try . parseSpecialChar <$> specialChars)
     parseSpecialChar :: (String, t) -> Parser t
     parseSpecialChar (s, t) = t <$ string s
 
+stringToken :: Parser Token
+stringToken = String <$> between (char '"') (char '"') (many (noneOf ['"']))
+
 tok :: Parser Token
-tok = identifier <|> specialChar
+tok = stringToken <|> identifier <|> specialChar
 
 expect :: Token -> TokParser ()
 expect t = tokenPrim show (\p _ _ -> p) (\t' -> if (t' == t) then Just () else Nothing)

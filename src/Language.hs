@@ -32,6 +32,7 @@ data Funparams
 data Term
   = List [Term]
   | Symbol Symbol
+  | String String
   | SpecialForm SpecialForm
   | Function Env Funparams Term
   | Macro Funparams Term
@@ -120,6 +121,7 @@ lookupEnv s = do
 eval :: MonadInterpreter m => Term -> m Term
 eval (List (x:xs)) = flip call xs =<< eval x
 eval (Symbol s) = lookupEnv s
+eval (String s) = pure (String s)
 eval e = throwError (Can'tEval e)
 
 call :: MonadInterpreter m => Term -> [Term] -> m Term
