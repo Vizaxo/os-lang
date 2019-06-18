@@ -30,3 +30,10 @@
 
 (defun cddr (xs)
   (cdr (cdr xs)))
+
+(defmacro cond conds
+  (if conds
+      `(if ,(car (car conds))
+           ,(cadr (car conds))
+         (apply cond ,(cdr conds)))
+    ''error-no-true-case))
