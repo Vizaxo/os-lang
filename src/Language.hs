@@ -98,7 +98,7 @@ eval e = throwError (Can'tEval e)
 call :: MonadInterpreter m => Term -> [Term] -> m Term
 call (SpecialForm sf) args = callSF sf args
 call (Function lexicalEnv params body) args = callFun lexicalEnv params args body
-call (Macro params body) args = eval =<< macroExpand params args body
+call (Macro lexicalEnv params body) args = eval =<< macroExpand lexicalEnv params args body
 call op args = throwError (IllegalCall op args)
 
 callSF :: MonadInterpreter m => SpecialForm -> [Term] -> m Term
@@ -117,7 +117,8 @@ callSF Mac [params, body] = do
       traverse (\t -> mbError (MacroArgNotSymbol t) (t ^? _Symbol)) listParams
     Symbol varargs -> pure (Varargs varargs)
     _ -> throwError (MacroArgError params)
-  pure (Macro funparams body)
+  lexicalEnv <- ask
+  pure (Macro lexicalEnv funparams body)
 callSF Quote [arg] = pure arg
 callSF Quote args = pure (List args)
 callSF Quasiquote [arg] = quasiquote arg
@@ -175,11 +176,11 @@ callFunNoEvalArgs lexicalEnv (Varargs params) args body = do
   local (const (insertEnv params (List args) lexicalEnv)) (eval body)
 
 
-macroExpand :: MonadInterpreter m => Funparams -> [Term] -> Term -> m Term
-macroExpand (ParamsList params) args body =
-  local (insertsEnv params args) (eval body)
-macroExpand (Varargs params) args body =
-  local (insertEnv params (List args)) (eval body)
+macroExpand :: MonadInterpreter m => Env -> Funparams -> [Term] -> Term -> m Term
+macroExpand lexicalEnv (ParamsList params) args body =
+  local (const (insertsEnv params args lexicalEnv)) (eval body)
+macroExpand lexicalEnv (Varargs params) args body =
+  local (const (insertEnv params (List args) lexicalEnv)) (eval body)
 
 readEval :: MonadInterpreter m => Text -> m [Term]
 readEval s = do

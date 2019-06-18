@@ -33,7 +33,7 @@ data Term
   | String String
   | SpecialForm SpecialForm
   | Function Env Funparams Term
-  | Macro Funparams Term
+  | Macro Env Funparams Term
   deriving Show
 
 newtype Env = Env {_unEnv :: M.Map Symbol Term}
