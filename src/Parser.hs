@@ -1,6 +1,6 @@
 module Parser where
 
-import Language
+import Types
 import Lexer as L
 import Sexp
 
@@ -45,7 +45,7 @@ parseUnquote (SexpTree [Node L.Unquote, t]) = do
 parseUnquote _ = Nothing
 
 string :: TokenTree -> Maybe Term
-string (Node (L.String s)) = Just (Language.String s)
+string (Node (L.String s)) = Just (Types.String s)
 string _ = Nothing
 
 term :: TokenTree -> Maybe Term

@@ -5,45 +5,13 @@ import Control.Monad.Reader
 import Control.Monad.State
 import Control.Lens hiding (List)
 import qualified Data.Map as M
+import Data.Text
 
-data SpecialForm
-  = Lambda
-  | Mac
-  | Quote
-  | Quasiquote
-  | Unquote
-  | Cons
-  | Car
-  | Cdr
-  | If
-  | Def
-  | Eval
-  | Apply
-  deriving Show
-
-newtype Symbol = Sym {unSymbol :: String}
-  deriving (Eq, Ord, Show)
-
-data Funparams
-  = ParamsList [Symbol]
-  | Varargs Symbol
-  deriving Show
-
-data Term
-  = List [Term]
-  | Symbol Symbol
-  | String String
-  | SpecialForm SpecialForm
-  | Function Env Funparams Term
-  | Macro Funparams Term
-  deriving Show
+import Parser
+import Types
 
 nil :: Term
 nil = List []
-
-newtype Env = Env {_unEnv :: M.Map Symbol Term}
-  deriving Show
-makeLenses ''Env
 
 emptyEnv :: Env
 emptyEnv = Env (M.empty)
@@ -67,6 +35,7 @@ data InterpreterError
   | MacroArgNotSymbol Term
   | MacroArgError Term
   | SFIllegalArgs SpecialForm [Term]
+  | ParseError LexerParserError
   deriving Show
 
 data InterpreterState = InterpreterState
@@ -81,6 +50,7 @@ type MonadInterpreter m =
   ( MonadReader Env m
   , MonadError InterpreterError m
   , MonadState InterpreterState m
+  , MonadIO m -- file opening
   )
 
 specialFormsEnv :: Env
@@ -97,11 +67,12 @@ specialFormsEnv = Env $ M.fromList $ fmap (bimap Sym SpecialForm)
   , ("def", Def)
   , ("eval", Eval)
   , ("apply", Apply)
+  , ("load-file", LoadFile)
   ]
 
-evalInterpreter :: ReaderT Env (ExceptT InterpreterError (State InterpreterState)) a
-  -> Either InterpreterError a
-evalInterpreter ma = evalState (runExceptT (runReaderT ma specialFormsEnv)) emptyState
+evalInterpreter :: MonadIO m => ReaderT Env (ExceptT InterpreterError (StateT InterpreterState m)) a
+  -> m (Either InterpreterError a)
+evalInterpreter ma = evalStateT (runExceptT (runReaderT ma specialFormsEnv)) emptyState
 
 mbError :: MonadError err m => err -> Maybe a -> m a
 mbError err Nothing = throwError err
@@ -180,6 +151,10 @@ callSF Apply [f, args] = do
         -> callFunNoEvalArgs lexicalEnv params args' body
       _ -> throwError (SFIllegalArgs Apply [f, args])
     _ -> throwError (SFIllegalArgs Apply [f, args])
+callSF LoadFile [path] = do
+  eval path >>= \case
+    String filePath -> List <$> evalFile filePath
+    _ -> throwError (SFIllegalArgs LoadFile [path])
 callSF sf args = throwError (SFIllegalArgs sf args)
 
 quasiquote :: forall m. MonadInterpreter m => Term -> m Term
@@ -205,3 +180,13 @@ macroExpand (ParamsList params) args body =
   local (insertsEnv params args) (eval body)
 macroExpand (Varargs params) args body =
   local (insertEnv params (List args)) (eval body)
+
+readEval :: MonadInterpreter m => Text -> m [Term]
+readEval s = do
+  terms <- case parseTerms s of
+    Right x -> pure x
+    Left err -> throwError (ParseError err)
+  traverse eval terms
+
+evalFile :: MonadInterpreter m => FilePath -> m [Term]
+evalFile file = readEval . pack =<< liftIO (readFile file)
