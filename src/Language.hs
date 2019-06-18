@@ -146,10 +146,13 @@ callSF Def [Symbol name, val] = do
 callSF Eval [t] = do
   eval =<< eval t
 callSF Apply [f, args] = do
-  eval args >>= \case
-    List args' -> eval f >>= \case
-      Function lexicalEnv params body
-        -> callFunNoEvalArgs lexicalEnv params args' body
+  eval f >>= \case
+    Function lexicalEnv params body -> do
+      eval args >>= \case
+        List args' -> callFunNoEvalArgs lexicalEnv params args' body
+        _ -> throwError (SFIllegalArgs Apply [f, args])
+    Macro lexicalEnv params body -> case args of
+      List args' -> eval =<< macroExpand lexicalEnv params args' body
       _ -> throwError (SFIllegalArgs Apply [f, args])
     _ -> throwError (SFIllegalArgs Apply [f, args])
 callSF LoadFile [path] = do
