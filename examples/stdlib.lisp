@@ -25,3 +25,8 @@
 (defun map (f xs)
   (match-list xs '() (lambda (hd tl) (cons (f hd) (map f tl)))))
 
+(defun cadr (xs)
+  (car (cdr xs)))
+
+(defun cddr (xs)
+  (cdr (cdr xs)))
