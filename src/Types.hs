@@ -17,7 +17,8 @@ data SpecialForm
   | Eval
   | Apply
   | LoadFile
-  deriving Show
+  | EqP
+  deriving (Eq, Show)
 
 newtype Symbol = Sym {unSymbol :: String}
   deriving (Eq, Ord, Show)
@@ -25,7 +26,7 @@ newtype Symbol = Sym {unSymbol :: String}
 data Funparams
   = ParamsList [Symbol]
   | Varargs Symbol
-  deriving Show
+  deriving (Eq, Show)
 
 data Term
   = List [Term]
@@ -34,8 +35,8 @@ data Term
   | SpecialForm SpecialForm
   | Function Env Funparams Term
   | Macro Env Funparams Term
-  deriving Show
+  deriving (Eq, Show)
 
 newtype Env = Env {_unEnv :: M.Map Symbol Term}
-  deriving Show
+  deriving (Eq, Show)
 makeLenses ''Env

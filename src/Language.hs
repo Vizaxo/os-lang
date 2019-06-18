@@ -13,6 +13,9 @@ import Types
 nil :: Term
 nil = List []
 
+t :: Term
+t = Symbol (Sym "t")
+
 emptyEnv :: Env
 emptyEnv = Env (M.empty)
 
@@ -68,6 +71,7 @@ specialFormsEnv = Env $ M.fromList $ fmap (bimap Sym SpecialForm)
   , ("eval", Eval)
   , ("apply", Apply)
   , ("load-file", LoadFile)
+  , ("eq?", EqP)
   ]
 
 evalInterpreter :: MonadIO m => ReaderT Env (ExceptT InterpreterError (StateT InterpreterState m)) a
@@ -159,6 +163,12 @@ callSF LoadFile [path] = do
   eval path >>= \case
     String filePath -> List <$> evalFile filePath
     _ -> throwError (SFIllegalArgs LoadFile [path])
+callSF EqP [a, b] = do
+  a' <- eval a
+  b' <- eval b
+  pure (if a' == b'
+    then t
+    else nil)
 callSF sf args = throwError (SFIllegalArgs sf args)
 
 quasiquote :: forall m. MonadInterpreter m => Term -> m Term
