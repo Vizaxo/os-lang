@@ -27,3 +27,9 @@ default-extensions:
 
 library:
   source-dirs: src
+
+tests:
+  test-lisp:
+    source-dirs: test-lisp
+    main: TestLisp.hs
+    dependencies: os-lang
